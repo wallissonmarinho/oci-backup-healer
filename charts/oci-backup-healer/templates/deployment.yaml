@@ -21,7 +21,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
         - name: OCI_CONFIG_FILE
-          value: "/root/.oci/config"
+          value: "/home/nonroot/.oci/config"
         - name: OCI_PROFILE
           value: "SP-C"
         - name: PRIMARY_VM_ID
@@ -32,6 +32,8 @@ spec:
           value: "{{ .Values.volumeID }}"
         - name: BACKUP_VM_IP
           value: "{{ .Values.backupVMIP }}"
+        - name: SSH_KEY_PATH
+          value: "/home/nonroot/.ssh/ssh_private_key"
         - name: RECONCILE_INTERVAL_SECS
           value: "{{ .Values.reconcileIntervalSecs }}"
         - name: UNHEALTHY_TIMEOUT_SECS
@@ -51,15 +53,17 @@ spec:
             memory: 32Mi
         volumeMounts:
         - name: oci-config
-          mountPath: /root/.oci
+          mountPath: /home/nonroot/.oci
           readOnly: true
         - name: ssh-key
-          mountPath: /etc/healer
+          mountPath: /home/nonroot/.ssh
           readOnly: true
       volumes:
       - name: oci-config
         secret:
           secretName: {{ .Values.ociConfigSecret }}
+          defaultMode: 0444
       - name: ssh-key
         secret:
           secretName: {{ .Values.sshKeySecret }}
+          defaultMode: 0444

@@ -254,7 +254,7 @@ func (r *Reconciler) mountVolumeRemote(info *provider.VolumeAttachmentInfo) erro
 	}
 	targetIP := r.cfg.BackupVMIP
 	user := "ubuntu"
-	keyPath := "/etc/healer/ssh_private_key"
+	keyPath := r.cfg.SSHKeyPath
 
 	r.logger.Info("Lendo chave privada SSH...", "path", keyPath)
 	key, err := os.ReadFile(keyPath)
