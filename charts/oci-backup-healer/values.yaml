@@ -3,7 +3,7 @@
 
 image:
   repository: ghcr.io/wallissonmarinho/oci-backup-healer
-  tag: "0.1.2"
+  tag: "0.1.3"
   pullPolicy: IfNotPresent
 
 # IDs do ecossistema de backups
