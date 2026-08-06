@@ -1,0 +1,17 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Local build artifacts
+bin
+healer-state.json
+healer-state.json.tmp
+
+# Go files
+.golangci.yml
+go.work
+go.work.sum
+
+# Dev Containers
+.devcontainer
