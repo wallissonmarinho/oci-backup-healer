@@ -68,13 +68,4 @@ spec:
           secretName: {{ .Values.sshKeySecret }}
           defaultMode: 0444
       nodeSelector:
-        kubernetes.io/hostname: oci-ash-a-micro-1
-      tolerations:
-      - key: "CriticalAddonsOnly"
-        operator: "Exists"
-      - key: "node-role.kubernetes.io/master"
-        operator: "Exists"
-        effect: "NoSchedule"
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
+        kubernetes.io/hostname: oci-ash-a-micro-2
