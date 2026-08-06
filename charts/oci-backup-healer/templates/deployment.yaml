@@ -70,6 +70,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: oci-ash-a-micro-1
       tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
       - key: "node-role.kubernetes.io/master"
         operator: "Exists"
         effect: "NoSchedule"
