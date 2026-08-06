@@ -1,6 +1,7 @@
 name: Tests
 
 on:
+  workflow_dispatch: # Gatilho manual no navegador
   push:
   pull_request:
 

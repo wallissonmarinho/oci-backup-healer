@@ -1,6 +1,7 @@
 name: Publish Docker Image
 
 on:
+  workflow_dispatch: # Habilita botão 'Run workflow' manual no navegador
   release:
     types: [published]
   push:
