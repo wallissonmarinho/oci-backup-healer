@@ -1,0 +1,29 @@
+# Default values for oci-backup-healer.
+# This is a YAML-formatted file.
+
+image:
+  repository: ghcr.io/wallissonmarinho/oci-backup-healer
+  tag: "0.1.2"
+  pullPolicy: IfNotPresent
+
+# IDs do ecossistema de backups
+primaryVMID: "ocid1.instance.oc1.sa-saopaulo-1.antxeljrbtebx5icwzdnrskuvevlqh4ndubsk5uinzteiz256jzuninjz77q"
+backupVMID: "ocid1.instance.oc1.sa-saopaulo-1.antxeljrbtebx5ickx6dqu3vxypjljrfmhf6xi4movucwndstxodem635ecq"
+volumeID: "ocid1.volume.oc1.sa-saopaulo-1.abtxeljrgkls5vdupzfry65ygu2vrwyu5c66udhz2zc72gxy4rniyrlqyueq"
+
+# Configurações do Reconciler
+reconcileIntervalSecs: 30
+unhealthyTimeoutSecs: 300
+
+# Parametros operacionais
+dryRun: false
+fakeProvider: false
+
+# Notificações ntfy
+ntfyTopicURL: "https://ntfy.sh/alerts-912"
+
+# Secrets de Autenticação (preenchidos no cluster ou lidos de arquivos locais)
+# O ociConfigSecret contem o arquivo config da OCI e a chave de API pem.
+ociConfigSecret: "oci-credentials-sp-c"
+# O sshKeySecret contem a chave privada ssh para conexao com a VM2 de backup.
+sshKeySecret: "oci-backup-ssh-key"

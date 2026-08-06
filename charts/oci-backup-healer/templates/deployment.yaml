@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oci-backup-healer
+  namespace: kube-system
+  labels:
+    app: oci-backup-healer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oci-backup-healer
+  template:
+    metadata:
+      labels:
+        app: oci-backup-healer
+    spec:
+      containers:
+      - name: healer
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: OCI_CONFIG_FILE
+          value: "/root/.oci/config"
+        - name: OCI_PROFILE
+          value: "SP-C"
+        - name: PRIMARY_VM_ID
+          value: "{{ .Values.primaryVMID }}"
+        - name: BACKUP_VM_ID
+          value: "{{ .Values.backupVMID }}"
+        - name: VOLUME_ID
+          value: "{{ .Values.volumeID }}"
+        - name: RECONCILE_INTERVAL_SECS
+          value: "{{ .Values.reconcileIntervalSecs }}"
+        - name: UNHEALTHY_TIMEOUT_SECS
+          value: "{{ .Values.unhealthyTimeoutSecs }}"
+        - name: DRY_RUN
+          value: "{{ .Values.dryRun }}"
+        - name: FAKE_PROVIDER
+          value: "{{ .Values.fakeProvider }}"
+        - name: NTFY_TOPIC_URL
+          value: "{{ .Values.ntfyTopicURL }}"
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        volumeMounts:
+        - name: oci-config
+          mountPath: /root/.oci
+          readOnly: true
+        - name: ssh-key
+          mountPath: /etc/healer
+          readOnly: true
+      volumes:
+      - name: oci-config
+        secret:
+          secretName: {{ .Values.ociConfigSecret }}
+      - name: ssh-key
+        secret:
+          secretName: {{ .Values.sshKeySecret }}
