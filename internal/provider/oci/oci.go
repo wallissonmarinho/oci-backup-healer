@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/wallissonmarinho/oci-backup-healer/internal/config"
 	"github.com/wallissonmarinho/oci-backup-healer/internal/provider"
@@ -20,13 +21,13 @@ func NewOCIProvider(cfg *config.Config) (*OCIProvider, error) {
 	var err error
 
 	if cfg.OCIConfigFile != "" {
-		authProvider, err = common.ConfigurationProviderFromFileWithProfile(cfg.OCIConfigFile, cfg.OCIProfile)
+		authProvider, err = common.ConfigurationProviderFromFileWithProfile(cfg.OCIConfigFile, cfg.OCIProfile, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to load configuration provider from file: %w", err)
 		}
 	} else {
 		// Fallback para Instance Principal se arquivo nao fornecido
-		authProvider, err = common.InstancePrincipalConfigurationProvider()
+		authProvider, err = auth.InstancePrincipalConfigurationProvider()
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize instance principal authentication: %w", err)
 		}
@@ -58,7 +59,8 @@ func (o *OCIProvider) IsInstanceRunning(ctx context.Context, instanceID string) 
 func (o *OCIProvider) GetActiveAttachmentForVolume(ctx context.Context, volumeID string) (string, string, error) {
 	// Listar associacoes no compartimento root
 	// Nota: Como em Always Free o compartment-id padrão é o tenancy root:
-	tenancyID, err := o.computeClient.ConfigurationProvider().TenancyOCID()
+	prov := o.computeClient.ConfigurationProvider()
+	tenancyID, err := (*prov).TenancyOCID()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to obtain tenancy id from auth provider: %w", err)
 	}
