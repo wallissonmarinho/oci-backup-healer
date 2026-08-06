@@ -3,9 +3,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
-	"os/exec"
+	"net"
+	"os"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 
 	"github.com/wallissonmarinho/oci-backup-healer/internal/config"
 	"github.com/wallissonmarinho/oci-backup-healer/internal/notifier"
@@ -216,11 +220,11 @@ func (r *Reconciler) executeFailoverTransaction(ctx context.Context, st *state.H
 	}
 	r.logger.Info("Volume associado na OCI e dados de conexao iSCSI obtidos!", "ip", attachInfo.IPv4, "iqn", attachInfo.IQN)
 
-	// Passo E: Efetuar conexao fisica iSCSI e montagem local no Linux
-	r.logger.Info("Iniciando comandos de conexao fisica iSCSI e montagem no Linux...")
-	err = r.mountVolumeLocal(attachInfo)
+	// Passo E: Efetuar conexao fisica iSCSI e montagem via SSH Remoto
+	r.logger.Info("Iniciando comandos de conexao fisica iSCSI e montagem via SSH Remoto...")
+	err = r.mountVolumeRemote(attachInfo)
 	if err != nil {
-		return fmt.Errorf("failed to mount volume locally in system: %w", err)
+		return fmt.Errorf("failed to mount volume remotely via SSH: %w", err)
 	}
 
 	// Passo F: Salvar estado de conclusao
@@ -235,7 +239,7 @@ func (r *Reconciler) executeFailoverTransaction(ctx context.Context, st *state.H
 	_ = r.notifier.Send(notifier.Event{
 		Type:       notifier.EventFailoverSuccess,
 		Timestamp:  time.Now(),
-		Message:    "O Block Volume foi montado fisicamente e os cronjobs locais estao ativos na VM secundaria.",
+		Message:    "O Block Volume foi montado fisicamente e os cronjobs locais estao ativos na VM secundaria via failover automatico.",
 		InstanceID: r.cfg.BackupVMID,
 		VolumeID:   r.cfg.VolumeID,
 	})
@@ -243,44 +247,83 @@ func (r *Reconciler) executeFailoverTransaction(ctx context.Context, st *state.H
 	return nil
 }
 
-// mountVolumeLocal roda os comandos de shell Linux iscsiadm e mount localmente
-func (r *Reconciler) mountVolumeLocal(info *provider.VolumeAttachmentInfo) error {
+// mountVolumeRemote executa os comandos do shell de forma remota na VM 2 via SSH
+func (r *Reconciler) mountVolumeRemote(info *provider.VolumeAttachmentInfo) error {
+	// A VM2 de São Paulo (sp-c-micro-2) está na Tailscale com o IP 100.113.192.73
+	targetIP := "100.113.192.73"
+	user := "ubuntu"
+	keyPath := "/etc/healer/ssh_private_key"
+
+	r.logger.Info("Lendo chave privada SSH...", "path", keyPath)
+	key, err := os.ReadFile(keyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read ssh private key: %w", err)
+	}
+
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Seguro pois roda inteiramente dentro da VPN Tailscale
+		Timeout:         15 * time.Second,
+	}
+
+	addr := net.JoinHostPort(targetIP, "22")
+	r.logger.Info("Conectando via SSH na VM secundaria...", "address", addr)
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial ssh connection: %w", err)
+	}
+	defer client.Close()
+
 	portal := fmt.Sprintf("%s:%d", info.IPv4, info.Port)
+	r.logger.Info("Enviando comandos iSCSI e montagem via sessao SSH...")
 
-	r.logger.Info("Roda Discovery iSCSI...", "portal", portal)
-	cmdDiscovery := exec.Command("sudo", "iscsiadm", "-m", "discoverydb", "-t", "sendtargets", "-p", portal, "--discover")
-	if out, err := cmdDiscovery.CombinedOutput(); err != nil {
-		return fmt.Errorf("iscsi discovery failed: %s: %w", string(out), err)
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create ssh session: %w", err)
+	}
+	defer session.Close()
+
+	// Pipeline de comandos que serão executados na VM 2
+	cmd := fmt.Sprintf(`
+		sudo iscsiadm -m discoverydb -t sendtargets -p %[1]s --discover && \
+		sudo iscsiadm -m node -T %[2]s -p %[1]s -l && \
+		sudo iscsiadm -m node -T %[2]s -p %[1]s --op update -n node.startup -v automatic && \
+		sleep 3 && \
+		sudo mkdir -p /backup && \
+		sudo mount /dev/sdb /backup && \
+		sudo systemctl start cron
+	`, portal, info.IQN)
+
+	r.logger.Info("Executando comandos remotos iSCSI...")
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to setup stdout pipe: %w", err)
+	}
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to setup stderr pipe: %w", err)
 	}
 
-	r.logger.Info("Roda Login iSCSI...", "iqn", info.IQN)
-	cmdLogin := exec.Command("sudo", "iscsiadm", "-m", "node", "-T", info.IQN, "-p", portal, "-l")
-	if out, err := cmdLogin.CombinedOutput(); err != nil {
-		return fmt.Errorf("iscsi login failed: %s: %w", string(out), err)
+	if err := session.Start(cmd); err != nil {
+		return fmt.Errorf("failed to start remote command execution: %w", err)
 	}
 
-	r.logger.Info("Configura auto-startup iSCSI no boot...")
-	cmdStartup := exec.Command("sudo", "iscsiadm", "-m", "node", "-T", info.IQN, "-p", portal, "--op", "update", "-n", "node.startup", "-v", "automatic")
-	if out, err := cmdStartup.CombinedOutput(); err != nil {
-		r.logger.Warn("Erro ao configurar auto-startup iSCSI (nao bloqueante)", "error", err, "output", string(out))
+	outBytes, _ := io.ReadAll(stdout)
+	errBytes, _ := io.ReadAll(stderr)
+
+	if err := session.Wait(); err != nil {
+		r.logger.Error("Comando remoto retornou erro", "stdout", string(outBytes), "stderr", string(errBytes))
+		return fmt.Errorf("remote ssh execution failed: %w", err)
 	}
 
-	// Aguardar dispositivo sdb aparecer
-	r.logger.Info("Aguardando dispositivo de bloco SCSI (/dev/sdb)...")
-	time.Sleep(3 * time.Second)
-
-	r.logger.Info("Montando volume no Linux local em /backup...")
-	cmdMount := exec.Command("sudo", "mount", "/dev/sdb", "/backup")
-	if out, err := cmdMount.CombinedOutput(); err != nil {
-		// Se ja estiver montado, ignora
-		r.logger.Warn("Erro ao montar volume (tentando continuar)", "error", err, "output", string(out))
-	}
-
-	r.logger.Info("Iniciando/Habilitando daemon do Cron local...")
-	cmdCron := exec.Command("sudo", "systemctl", "start", "cron")
-	if out, err := cmdCron.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to start cron daemon: %s: %w", string(out), err)
-	}
-
+	r.logger.Info("Comandos iSCSI e montagem remota executados com sucesso!", "stdout", string(outBytes))
 	return nil
 }
