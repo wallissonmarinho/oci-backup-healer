@@ -14,6 +14,7 @@ type Config struct {
 	PrimaryVMID     string
 	BackupVMID      string
 	VolumeID        string
+	BackupVMIP      string // IP de Tailscale da VM 2 de backup para conexoes SSH
 	Interval        time.Duration
 	UnhealthyBefore time.Duration
 	NtfyTopicURL    string
@@ -30,6 +31,7 @@ func LoadConfig() *Config {
 	flag.StringVar(&cfg.PrimaryVMID, "primary-vm-id", getEnv("PRIMARY_VM_ID", ""), "OCID da VM primaria (oci-sp-c-micro-1)")
 	flag.StringVar(&cfg.BackupVMID, "backup-vm-id", getEnv("BACKUP_VM_ID", ""), "OCID da VM de contingencia (oci-sp-c-micro-2)")
 	flag.StringVar(&cfg.VolumeID, "volume-id", getEnv("VOLUME_ID", ""), "OCID do Block Volume de backup")
+	flag.StringVar(&cfg.BackupVMIP, "backup-vm-ip", getEnv("BACKUP_VM_IP", ""), "IP privado da VM de contingencia para login SSH")
 	flag.StringVar(&cfg.NtfyTopicURL, "ntfy-topic-url", getEnv("NTFY_TOPIC_URL", ""), "URL do canal ntfy para notificacoes")
 	flag.BoolVar(&cfg.DryRun, "dry-run", getEnvBool("DRY_RUN", false), "Executar apenas simulacao (sem modificar volumes na nuvem)")
 	flag.BoolVar(&cfg.UseFakeProvider, "fake", getEnvBool("FAKE_PROVIDER", false), "Utilizar provedor simulado para testes locais")

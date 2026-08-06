@@ -249,8 +249,10 @@ func (r *Reconciler) executeFailoverTransaction(ctx context.Context, st *state.H
 
 // mountVolumeRemote executa os comandos do shell de forma remota na VM 2 via SSH
 func (r *Reconciler) mountVolumeRemote(info *provider.VolumeAttachmentInfo) error {
-	// A VM2 de São Paulo (sp-c-micro-2) está na Tailscale com o IP 100.113.192.73
-	targetIP := "100.113.192.73"
+	if r.cfg.BackupVMIP == "" {
+		return fmt.Errorf("backup VM IP is empty in config, cannot establish SSH connection")
+	}
+	targetIP := r.cfg.BackupVMIP
 	user := "ubuntu"
 	keyPath := "/etc/healer/ssh_private_key"
 

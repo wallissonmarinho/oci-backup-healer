@@ -1,0 +1,16 @@
+# Binaries
+bin/
+oci-backup-healer
+
+# Local state
+healer-state.json
+healer-state.json.tmp
+
+# Private Configurations
+values-private.yaml
+*-private.yaml
+.env
+
+# Go workspace
+go.work
+go.work.sum

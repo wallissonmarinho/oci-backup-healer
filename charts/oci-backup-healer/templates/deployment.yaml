@@ -30,6 +30,8 @@ spec:
           value: "{{ .Values.backupVMID }}"
         - name: VOLUME_ID
           value: "{{ .Values.volumeID }}"
+        - name: BACKUP_VM_IP
+          value: "{{ .Values.backupVMIP }}"
         - name: RECONCILE_INTERVAL_SECS
           value: "{{ .Values.reconcileIntervalSecs }}"
         - name: UNHEALTHY_TIMEOUT_SECS

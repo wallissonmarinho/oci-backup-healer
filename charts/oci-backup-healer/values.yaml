@@ -3,13 +3,14 @@
 
 image:
   repository: ghcr.io/wallissonmarinho/oci-backup-healer
-  tag: "0.1.4"
+  tag: "0.1.5" # Atualizado para nova tag segura
   pullPolicy: IfNotPresent
 
-# IDs do ecossistema de backups
-primaryVMID: "ocid1.instance.oc1.sa-saopaulo-1.antxeljrbtebx5icwzdnrskuvevlqh4ndubsk5uinzteiz256jzuninjz77q"
-backupVMID: "ocid1.instance.oc1.sa-saopaulo-1.antxeljrbtebx5ickx6dqu3vxypjljrfmhf6xi4movucwndstxodem635ecq"
-volumeID: "ocid1.volume.oc1.sa-saopaulo-1.abtxeljrgkls5vdupzfry65ygu2vrwyu5c66udhz2zc72gxy4rniyrlqyueq"
+# IDs do ecossistema de backups (Deixar vazio no repositório público)
+primaryVMID: ""
+backupVMID: ""
+volumeID: ""
+backupVMIP: "" # IP da VM 2 (Tailscale) para comandos SSH
 
 # Configurações do Reconciler
 reconcileIntervalSecs: 30
@@ -19,8 +20,8 @@ unhealthyTimeoutSecs: 300
 dryRun: false
 fakeProvider: false
 
-# Notificações ntfy
-ntfyTopicURL: "https://ntfy.sh/alerts-912"
+# Notificações ntfy (Deixar vazio no repositório público)
+ntfyTopicURL: ""
 
 # Secrets de Autenticação (preenchidos no cluster ou lidos de arquivos locais)
 # O ociConfigSecret contem o arquivo config da OCI e a chave de API pem.
