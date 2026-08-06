@@ -68,4 +68,4 @@ spec:
           secretName: {{ .Values.sshKeySecret }}
           defaultMode: 0444
       nodeSelector:
-        kubernetes.io/hostname: oci-ash-a-micro-2
+        kubernetes.io/arch: amd64
