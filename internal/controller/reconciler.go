@@ -64,7 +64,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 			r.logger.Info("VM Primaria recuperou a saude na OCI. Registrando normalidade.")
 			st.PrimaryStatus = "healthy"
 			st.LastTransition = time.Now()
-			_ = r.store.Save(st)
+			if err := r.store.Save(st); err != nil {
+				r.logger.Error("Erro ao salvar estado local", "error", err)
+			}
 
 			// Notificar recuperacao
 			_ = r.notifier.Send(notifier.Event{
@@ -88,7 +90,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 		r.logger.Warn("VM Primaria inativa detectada pela primeira vez. Iniciando contagem de tolerancia.")
 		st.PrimaryStatus = "unhealthy"
 		st.LastTransition = time.Now()
-		_ = r.store.Save(st)
+		if err := r.store.Save(st); err != nil {
+			r.logger.Error("Erro ao salvar estado local", "error", err)
+		}
 
 		// Notificar primeira queda
 		_ = r.notifier.Send(notifier.Event{
@@ -119,7 +123,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 		if r.cfg.DryRun {
 			r.logger.Info("[DRY RUN] Failover simulado com sucesso. Nenhuma acao fisica executada.")
 			st.ActiveFailover = true
-			_ = r.store.Save(st)
+			if err := r.store.Save(st); err != nil {
+				r.logger.Error("Erro ao salvar estado local", "error", err)
+			}
 			return nil
 		}
 

@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// 4. Instanciar persistidor de estado local
-	statePath := "/home/ubuntu/healer-state.json"
+	statePath := "/tmp/healer-state.json"
 	if cfg.UseFakeProvider {
 		statePath = "./healer-state.json"
 	}
